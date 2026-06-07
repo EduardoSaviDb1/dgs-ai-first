@@ -1,0 +1,79 @@
+' Diagram: Fluxo unico consolidado (principal + fallback + feedback)
+' Feature: Assistente de IA NovaTech (DB1)
+' Generated on: 2026-06-06
+
+@startuml
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F4F6F8
+  BorderColor #455A64
+  DiamondBackgroundColor #FFF3E0
+  DiamondBorderColor #EF6C00
+}
+skinparam activity<<principal>> {
+  BackgroundColor #E8F5E9
+  BorderColor #1B5E20
+}
+skinparam activity<<fallback>> {
+  BackgroundColor #FFF8E1
+  BorderColor #EF6C00
+}
+skinparam activity<<feedback>> {
+  BackgroundColor #FFEBEE
+  BorderColor #B71C1C
+}
+
+start
+:Atendente recebe duvida do cliente durante chamado;
+:Atendente abre o assistente no Teams e envia pergunta em linguagem natural;
+:Assistente recupera chunks relevantes da base indexada;
+:Assistente gera resposta com citacao de fonte (documento + secao);
+
+note right
+Guardrails aplicados:
+1) Nao afirmar prazo/valor sem fonte verificavel
+2) Em contradicao, mostrar as versoes com alerta
+3) Linguagem formal em portugues
+4) Se nao encontrar, declarar explicitamente
+end note
+
+if (Resposta adequada para uso imediato?) then (Sim)
+  :Atendente valida fonte e contexto; <<principal>>
+  :Atendente usa a informacao no atendimento; <<principal>>
+  stop
+else (Nao)
+  if (Resposta estava incorreta,
+desatualizada, incompleta
+ou com fonte errada?) then (Sim)
+    :Atendente clica em "Reportar problema"; <<feedback>>
+    :Assistente apresenta formulario de feedback; <<feedback>>
+    :Feedback registrado com query, resposta, chunks e tipo; <<feedback>>
+    :Fila de revisao enviada para curadoria; <<feedback>>
+
+    if (Problema confirmado pela curadoria?) then (Sim)
+      :Documento corrigido/atualizado na base; <<feedback>>
+      :Atendente notificado da correcao; <<feedback>>
+      stop
+    else (Nao)
+      :Feedback arquivado com justificativa; <<feedback>>
+      stop
+    endif
+
+  else (Nao)
+    :Assistente sugere proximo passo
+(nao encontrou, contradicao ou discordancia); <<fallback>>
+
+    if (Consegue resolver com colega
+ou area responsavel?) then (Sim)
+      :Consulta colega/area responsavel; <<fallback>>
+      :Registra fallback no assistente; <<fallback>>
+      stop
+    else (Nao)
+      :Escala para supervisor com contexto qualificado; <<fallback>>
+      :Registra fallback no assistente; <<fallback>>
+      stop
+    endif
+  endif
+endif
+
+@enduml
